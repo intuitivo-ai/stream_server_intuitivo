@@ -11,7 +11,7 @@ defmodule MjpegServer.ServerManager do
   end
 
   def start_server(name, tcp_host, tcp_port, http_port) do
-    GenServer.call(__MODULE__, {:start_server, name, tcp_host, tcp_port, http_port})
+    GenServer.call(__MODULE__, {:start_server, name, tcp_host, tcp_port, http_port}, 15_000)
   end
 
   def stop_server(name) do
@@ -30,23 +30,35 @@ defmodule MjpegServer.ServerManager do
     if Map.has_key?(state.servers, name) do
       {:reply, {:error, :already_exists}, state}
     else
-      case MjpegServer.start_server(name, tcp_host, tcp_port, http_port) do
-        {:ok, pids} ->
-          server_info = %{
-            tcp_host: tcp_host,
-            tcp_port: tcp_port,
-            http_port: http_port,
-            pids: pids,
-            http_ref: pids.http_ref
-          }
-          new_state = put_in(state.servers[name], server_info)
-          {:reply, {:ok, server_info}, new_state}
-        {:error, :port_in_use} ->
-          Logger.error("Port #{http_port} is already in use")
-          {:reply, {:error, :port_in_use}, state}
-        error ->
-          Logger.error("Failed to start server #{name}: #{inspect(error)}")
-          {:reply, {:error, :start_failed}, state}
+      try do
+        case MjpegServer.start_server(name, tcp_host, tcp_port, http_port) do
+          {:ok, pids} ->
+            server_info = %{
+              tcp_host: tcp_host,
+              tcp_port: tcp_port,
+              http_port: http_port,
+              pids: pids,
+              http_ref: pids.http_ref
+            }
+            new_state = put_in(state.servers[name], server_info)
+            {:reply, {:ok, server_info}, new_state}
+          {:error, :port_in_use} ->
+            Logger.error("Port #{http_port} is already in use")
+            {:reply, {:error, :port_in_use}, state}
+          {:error, :tcp_connection_timeout} ->
+            Logger.error("TCP connection timeout to #{tcp_host}:#{tcp_port}")
+            {:reply, {:error, :tcp_connection_timeout}, state}
+          {:error, {:tcp_connection_failed, reason}} ->
+            Logger.error("TCP connection failed to #{tcp_host}:#{tcp_port}: #{inspect(reason)}")
+            {:reply, {:error, :tcp_connection_failed}, state}
+          error ->
+            Logger.error("Failed to start server #{name}: #{inspect(error)}")
+            {:reply, {:error, :start_failed}, state}
+        end
+      catch
+        kind, error ->
+          Logger.error("Unexpected error starting server: #{inspect(kind)} #{inspect(error)}")
+          {:reply, {:error, :unexpected_error}, state}
       end
     end
   end

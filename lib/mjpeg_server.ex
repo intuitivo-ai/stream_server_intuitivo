@@ -40,7 +40,6 @@ defmodule MjpegServer do
     # Check if HTTP port is available
     case check_port_available(http_port) do
       true ->
-        # Create a unique reference for this server's HTTP listener
         http_ref = String.to_atom("#{name}_http")
 
         case DynamicSupervisor.start_child(
@@ -51,20 +50,33 @@ defmodule MjpegServer do
             options: [
               port: http_port,
               ip: {0,0,0,0},
-              ref: http_ref  # Add unique reference
+              ref: http_ref
             ]
           }
         ) do
           {:ok, http_pid} ->
-            case DynamicSupervisor.start_child(
-              MjpegServer.DynamicSupervisor,
-              {MjpegServer.TcpClient, {name, tcp_host, tcp_port}}
-            ) do
-              {:ok, tcp_pid} ->
-                {:ok, %{http_pid: http_pid, tcp_pid: tcp_pid, http_ref: http_ref}}
-              error ->
-                _ = DynamicSupervisor.terminate_child(MjpegServer.DynamicSupervisor, http_pid)
-                error
+            try do
+              tcp_start_result = Task.await(
+                Task.async(fn ->
+                  DynamicSupervisor.start_child(
+                    MjpegServer.DynamicSupervisor,
+                    {MjpegServer.TcpClient, {name, tcp_host, tcp_port}}
+                  )
+                end),
+                8_000  # Reduced to 8 seconds to ensure it's less than GenServer timeout
+              )
+
+              case tcp_start_result do
+                {:ok, tcp_pid} ->
+                  {:ok, %{http_pid: http_pid, tcp_pid: tcp_pid, http_ref: http_ref}}
+                {:error, reason} ->
+                  cleanup_http_server(http_pid, http_ref)
+                  {:error, {:tcp_connection_failed, reason}}
+              end
+            catch
+              :exit, {:timeout, _} ->
+                cleanup_http_server(http_pid, http_ref)
+                {:error, :tcp_connection_timeout}
             end
           error ->
             error
@@ -96,6 +108,12 @@ defmodule MjpegServer do
       {:ok, :ok} -> :ok
       error -> {:error, error}
     end
+  end
+
+  # Add helper function to cleanup HTTP server
+  defp cleanup_http_server(http_pid, http_ref) do
+    DynamicSupervisor.terminate_child(MjpegServer.DynamicSupervisor, http_pid)
+    :ranch.stop_listener(http_ref)
   end
 end
 
@@ -194,7 +212,8 @@ defmodule MjpegServer.TcpClient do
 
   @impl true
   def init({server_name, host, port}) do
-    case :gen_tcp.connect(String.to_charlist(host), port, [:binary, active: true]) do
+    case :gen_tcp.connect(String.to_charlist(host), port,
+      [:binary, active: true], 5_000) do
       {:ok, socket} ->
         {:ok, %{socket: socket, buffer: <<>>, server_name: server_name}}
       {:error, reason} ->
