@@ -15,10 +15,9 @@ defmodule StreamServerIntuitivo.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :runtime_tools],
+      extra_applications: [:logger, :runtime_tools, :plug_cowboy],
       mod: {StreamServerIntuitivo, []},
-      start_phases: [init: []],
-      applications: [:plug_cowboy]
+      start_phases: [init: []]
     ]
   end
 
