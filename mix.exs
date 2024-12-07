@@ -3,7 +3,7 @@ defmodule StreamServerIntuitivo.MixProject do
 
   def project do
     [
-      app: :mjpeg_server,
+      app: :stream_server_intuitivo,
       version: "0.1.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
@@ -14,7 +14,7 @@ defmodule StreamServerIntuitivo.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {MjpegServer, []}
+      mod: {StreamServerIntuitivo, []}
     ]
   end
 

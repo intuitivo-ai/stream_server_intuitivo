@@ -1,4 +1,4 @@
-defmodule MjpegServer do
+defmodule StreamServerIntuitivo do
   use Application
   require Logger
 
@@ -7,12 +7,12 @@ defmodule MjpegServer do
     cleanup_cowboy_listeners()
 
     children = [
-      {Registry, keys: :duplicate, name: MjpegServer.Registry},
-      {DynamicSupervisor, strategy: :one_for_one, name: MjpegServer.DynamicSupervisor},
-      {MjpegServer.ServerManager, []}
+      {Registry, keys: :duplicate, name: StreamServerIntuitivo.Registry},
+      {DynamicSupervisor, strategy: :one_for_one, name: StreamServerIntuitivo.DynamicSupervisor},
+      {StreamServerIntuitivo.ServerManager, []}
     ]
 
-    opts = [strategy: :one_for_one, name: MjpegServer.Supervisor]
+    opts = [strategy: :one_for_one, name: StreamServerIntuitivo.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
@@ -43,10 +43,10 @@ defmodule MjpegServer do
         http_ref = String.to_atom("#{name}_http")
 
         case DynamicSupervisor.start_child(
-          MjpegServer.DynamicSupervisor,
+          StreamServerIntuitivo.DynamicSupervisor,
           {Plug.Cowboy,
             scheme: :http,
-            plug: {MjpegServer.Router, server_name: name},
+            plug: {StreamServerIntuitivo.Router, server_name: name},
             options: [
               port: http_port,
               ip: {0,0,0,0},
@@ -59,8 +59,8 @@ defmodule MjpegServer do
               tcp_start_result = Task.await(
                 Task.async(fn ->
                   DynamicSupervisor.start_child(
-                    MjpegServer.DynamicSupervisor,
-                    {MjpegServer.TcpClient, {name, tcp_host, tcp_port}}
+                    StreamServerIntuitivo.DynamicSupervisor,
+                    {StreamServerIntuitivo.TcpClient, {name, tcp_host, tcp_port}}
                   )
                 end),
                 8_000  # Reduced to 8 seconds to ensure it's less than GenServer timeout
@@ -98,8 +98,8 @@ defmodule MjpegServer do
 
   def stop_server(%{http_pid: http_pid, tcp_pid: tcp_pid, http_ref: http_ref}) do
     # Stop both services, continue even if one fails
-    http_result = DynamicSupervisor.terminate_child(MjpegServer.DynamicSupervisor, http_pid)
-    tcp_result = DynamicSupervisor.terminate_child(MjpegServer.DynamicSupervisor, tcp_pid)
+    http_result = DynamicSupervisor.terminate_child(StreamServerIntuitivo.DynamicSupervisor, http_pid)
+    tcp_result = DynamicSupervisor.terminate_child(StreamServerIntuitivo.DynamicSupervisor, tcp_pid)
 
     # Also stop the Ranch listener explicitly
     :ranch.stop_listener(http_ref)
@@ -112,12 +112,12 @@ defmodule MjpegServer do
 
   # Add helper function to cleanup HTTP server
   defp cleanup_http_server(http_pid, http_ref) do
-    DynamicSupervisor.terminate_child(MjpegServer.DynamicSupervisor, http_pid)
+    DynamicSupervisor.terminate_child(StreamServerIntuitivo.DynamicSupervisor, http_pid)
     :ranch.stop_listener(http_ref)
   end
 end
 
-defmodule MjpegServer.Router do
+defmodule StreamServerIntuitivo.Router do
   use Plug.Router
   require Logger
 
@@ -143,14 +143,14 @@ defmodule MjpegServer.Router do
     conn = put_resp_header(conn, "pragma", "no-cache")
 
     # Register this process to receive frames for this specific server
-    {:ok, _} = Registry.register(MjpegServer.Registry, frames_key, {})
+    {:ok, _} = Registry.register(StreamServerIntuitivo.Registry, frames_key, {})
 
     conn = send_chunked(conn, 200)
 
     try do
       stream_frames(conn)
     after
-      Registry.unregister(MjpegServer.Registry, frames_key)
+      Registry.unregister(StreamServerIntuitivo.Registry, frames_key)
     end
   end
 
@@ -202,7 +202,7 @@ defmodule MjpegServer.Router do
   end
 end
 
-defmodule MjpegServer.TcpClient do
+defmodule StreamServerIntuitivo.TcpClient do
   use GenServer
   require Logger
 
@@ -243,7 +243,7 @@ defmodule MjpegServer.TcpClient do
   @impl true
   def handle_info({:broadcast_frame, frame}, %{server_name: server_name} = state) do
     frames_key = "#{server_name}_frames"
-    Registry.dispatch(MjpegServer.Registry, frames_key, fn entries ->
+    Registry.dispatch(StreamServerIntuitivo.Registry, frames_key, fn entries ->
       for {pid, _} <- entries, do: send(pid, {:jpeg_frame, frame})
     end)
     {:noreply, state}

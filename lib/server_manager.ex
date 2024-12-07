@@ -1,4 +1,4 @@
-defmodule MjpegServer.ServerManager do
+defmodule StreamServerIntuitivo.ServerManager do
   use GenServer
   require Logger
 
@@ -31,7 +31,7 @@ defmodule MjpegServer.ServerManager do
       {:reply, {:error, :already_exists}, state}
     else
       try do
-        case MjpegServer.start_server(name, tcp_host, tcp_port, http_port) do
+        case StreamServerIntuitivo.start_server(name, tcp_host, tcp_port, http_port) do
           {:ok, pids} ->
             server_info = %{
               tcp_host: tcp_host,
@@ -68,7 +68,7 @@ defmodule MjpegServer.ServerManager do
       nil ->
         {:reply, {:error, :not_found}, state}
       server_info ->
-        case MjpegServer.stop_server(server_info.pids) do
+        case StreamServerIntuitivo.stop_server(server_info.pids) do
           :ok ->
             new_state = %{state | servers: Map.delete(state.servers, name)}
             {:reply, :ok, new_state}

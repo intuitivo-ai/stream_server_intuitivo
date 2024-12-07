@@ -1,4 +1,4 @@
-# MjpegServer
+# Stream Server Intuitivo
 
 A lightweight Elixir MJPEG streaming server that can handle multiple camera streams simultaneously. It accepts MJPEG streams over TCP and makes them available via HTTP.
 
@@ -14,12 +14,12 @@ A lightweight Elixir MJPEG streaming server that can handle multiple camera stre
 
 ## Installation
 
-Add `mjpeg_server` to your list of dependencies in `mix.exs`:
+Add `stream_server_intuitivo` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:mjpeg_server, "~> 0.1.0"}
+    {:stream_server_intuitivo, "~> 0.1.0"}
   ]
 end
 ```
@@ -30,7 +30,7 @@ end
 
 ```elixir
 # Start a new MJPEG server
-MjpegServer.ServerManager.start_server(
+StreamServerIntuitivo.ServerManager.start_server(
   "camera1",           # Unique name for this stream
   "192.168.1.100",    # TCP host (camera IP)
   6001,               # TCP port
@@ -42,13 +42,13 @@ MjpegServer.ServerManager.start_server(
 
 ```elixir
 # List all running servers
-MjpegServer.ServerManager.list_servers()
+StreamServerIntuitivo.ServerManager.list_servers()
 
 # Get information about a specific server
-MjpegServer.ServerManager.get_server("camera1")
+StreamServerIntuitivo.ServerManager.get_server("camera1")
 
 # Stop a server
-MjpegServer.ServerManager.stop_server("camera1")
+StreamServerIntuitivo.ServerManager.stop_server("camera1")
 ```
 
 ### Error Handling
@@ -95,5 +95,5 @@ iex -S mix
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/mjpeg_server>.
+be found at <https://hexdocs.pm/stream_server_intuitivo>.
 
