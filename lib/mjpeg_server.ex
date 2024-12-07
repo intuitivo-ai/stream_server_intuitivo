@@ -3,6 +3,8 @@ defmodule StreamServerIntuitivo do
   require Logger
 
   def start(_type, _args) do
+    Logger.info("Starting StreamServerIntuitivo...")
+
     # Cleanup any leftover Cowboy listeners
     cleanup_cowboy_listeners()
 
@@ -13,7 +15,20 @@ defmodule StreamServerIntuitivo do
     ]
 
     opts = [strategy: :one_for_one, name: StreamServerIntuitivo.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        Logger.info("StreamServerIntuitivo started successfully")
+        {:ok, pid}
+      error ->
+        Logger.error("Failed to start StreamServerIntuitivo: #{inspect(error)}")
+        error
+    end
+  end
+
+  def start_phase(:init, _start_type, _phase_args) do
+    Logger.info("Initializing StreamServerIntuitivo phase...")
+    :ok
   end
 
   def stop(_state) do

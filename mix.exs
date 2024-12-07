@@ -7,14 +7,18 @@ defmodule StreamServerIntuitivo.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: description(),
+      package: package()
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger],
-      mod: {StreamServerIntuitivo, []}
+      extra_applications: [:logger, :runtime_tools],
+      mod: {StreamServerIntuitivo, []},
+      start_phases: [init: []],
+      applications: [:plug_cowboy]
     ]
   end
 
@@ -22,6 +26,21 @@ defmodule StreamServerIntuitivo.MixProject do
     [
       {:plug_cowboy, "~> 2.5"},
       {:jason, "~> 1.2"}
+    ]
+  end
+
+  defp description do
+    """
+    A lightweight MJPEG streaming server for Elixir/Nerves projects.
+    """
+  end
+
+  defp package do
+    [
+      files: ["lib", "mix.exs", "README.md", "LICENSE"],
+      maintainers: ["Your Name"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/yourusername/stream_server_intuitivo"}
     ]
   end
 end
