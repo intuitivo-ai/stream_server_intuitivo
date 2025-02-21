@@ -55,7 +55,7 @@ defmodule StreamServerIntuitivo do
     # Check if HTTP port is available
     case check_port_available(http_port) do
       true ->
-        http_ref = String.to_atom("#{name}_http")
+        http_ref = String.to_existing_atom("#{name}_http")
 
         case DynamicSupervisor.start_child(
           StreamServerIntuitivo.DynamicSupervisor,
