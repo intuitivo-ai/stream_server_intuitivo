@@ -26,6 +26,10 @@ defmodule StreamServerIntuitivo.ServerManager do
     GenServer.call(__MODULE__, :list_servers)
   end
 
+  def get_servers do
+    GenServer.call(__MODULE__, :list_servers)
+  end
+
   def handle_call({:start_server, name, tcp_host, tcp_port, http_port}, _from, state) do
     if Map.has_key?(state.servers, name) do
       Logger.error("Attempted to start server that already exists: #{name}")
