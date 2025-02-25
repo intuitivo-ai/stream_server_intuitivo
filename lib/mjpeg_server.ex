@@ -227,17 +227,19 @@ defmodule StreamServerIntuitivo.TcpClient do
 
   @impl true
   def init({server_name, host, port}) do
-    case :gen_tcp.connect(String.to_charlist(host), port,
-      [:binary, active: true], 5_000) do
+    case :gen_tcp.connect(String.to_charlist(host), port, [:binary, active: true], 5_000) do
       {:ok, socket} ->
+        Logger.info("TCP connection established for server: #{server_name}")
         {:ok, %{socket: socket, buffer: <<>>, server_name: server_name}}
       {:error, reason} ->
+        Logger.error("Failed to connect TCP for server #{server_name}: #{inspect(reason)}")
         {:stop, reason}
     end
   end
 
   @impl true
   def handle_info({:tcp, _socket, data}, %{buffer: buffer} = state) do
+    Logger.info("Received TCP data for server: #{state.server_name}")
     new_buffer = buffer <> data
 
     try do
@@ -271,15 +273,13 @@ defmodule StreamServerIntuitivo.TcpClient do
 
   @impl true
   def handle_info({:tcp_closed, _socket}, state) do
-    Logger.warn("TCP connection closed")
-
+    Logger.warn("TCP connection closed for server: #{state.server_name}")
     # Verificar si el servidor está registrado antes de enviar el mensaje
     if Map.has_key?(StreamServerIntuitivo.ServerManager.get_servers(), state.server_name) do
       send(StreamServerIntuitivo.ServerManager, {:tcp_closed, state.server_name})
     else
       Logger.error("Server #{state.server_name} not found when trying to send tcp_closed message.")
     end
-
     {:stop, :normal, state}
   end
 
