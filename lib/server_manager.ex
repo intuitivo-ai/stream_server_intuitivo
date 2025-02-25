@@ -90,4 +90,23 @@ defmodule StreamServerIntuitivo.ServerManager do
   def handle_call(:list_servers, _from, state) do
     {:reply, state.servers, state}
   end
+
+  def handle_info({:tcp_closed, name}, state) do
+    Logger.warn("TCP connection closed for server: #{name}")
+    case Map.get(state.servers, name) do
+      nil ->
+        Logger.error("Attempted to close non-existent server: #{name}")
+        {:noreply, state}
+      server_info ->
+        case StreamServerIntuitivo.stop_server(server_info.pids) do
+          :ok ->
+            new_state = %{state | servers: Map.delete(state.servers, name)}
+            Logger.info("Server #{name} stopped successfully due to TCP closure.")
+            {:noreply, new_state}
+          error ->
+            Logger.error("Failed to stop server #{name} due to TCP closure: #{inspect(error)}")
+            {:noreply, state}
+        end
+    end
+  end
 end
