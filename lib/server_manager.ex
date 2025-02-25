@@ -28,6 +28,7 @@ defmodule StreamServerIntuitivo.ServerManager do
 
   def handle_call({:start_server, name, tcp_host, tcp_port, http_port}, _from, state) do
     if Map.has_key?(state.servers, name) do
+      Logger.error("Attempted to start server that already exists: #{name}")
       {:reply, {:error, :already_exists}, state}
     else
       try do
@@ -41,6 +42,7 @@ defmodule StreamServerIntuitivo.ServerManager do
               http_ref: pids.http_ref
             }
             new_state = put_in(state.servers[name], server_info)
+            Logger.info("Server #{name} started successfully.")
             {:reply, {:ok, server_info}, new_state}
           {:error, :port_in_use} ->
             Logger.error("Port #{http_port} is already in use")
@@ -66,13 +68,16 @@ defmodule StreamServerIntuitivo.ServerManager do
   def handle_call({:stop_server, name}, _from, state) do
     case Map.get(state.servers, name) do
       nil ->
+        Logger.error("Attempted to stop non-existent server: #{name}")
         {:reply, {:error, :not_found}, state}
       server_info ->
         case StreamServerIntuitivo.stop_server(server_info.pids) do
           :ok ->
             new_state = %{state | servers: Map.delete(state.servers, name)}
+            Logger.info("Server #{name} stopped successfully.")
             {:reply, :ok, new_state}
           error ->
+            Logger.error("Failed to stop server #{name}: #{inspect(error)}")
             {:reply, error, state}
         end
     end
