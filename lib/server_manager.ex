@@ -43,6 +43,7 @@ defmodule StreamServerIntuitivo.ServerManager do
             }
             new_state = put_in(state.servers[name], server_info)
             Logger.info("Server #{name} started successfully.")
+            Logger.info("Registering server #{name} in state.")
             {:reply, {:ok, server_info}, new_state}
           {:error, :port_in_use} ->
             Logger.error("Port #{http_port} is already in use")
@@ -103,6 +104,9 @@ defmodule StreamServerIntuitivo.ServerManager do
             new_state = %{state | servers: Map.delete(state.servers, name)}
             Logger.info("Server #{name} stopped successfully due to TCP closure.")
             {:noreply, new_state}
+          {:error, {{:error, :not_found}, _}} ->
+            Logger.error("Server #{name} not found when trying to stop due to TCP closure.")
+            {:noreply, state}
           error ->
             Logger.error("Failed to stop server #{name} due to TCP closure: #{inspect(error)}")
             {:noreply, state}
