@@ -239,7 +239,6 @@ defmodule StreamServerIntuitivo.TcpClient do
 
   @impl true
   def handle_info({:tcp, _socket, data}, %{buffer: buffer} = state) do
-    Logger.info("Received TCP data for server: #{state.server_name}")
     new_buffer = buffer <> data
 
     try do
@@ -263,11 +262,6 @@ defmodule StreamServerIntuitivo.TcpClient do
     Registry.dispatch(StreamServerIntuitivo.Registry, frames_key, fn entries ->
       for {pid, _} <- entries, do: send(pid, {:jpeg_frame, frame})
     end)
-    if Map.has_key?(StreamServerIntuitivo.ServerManager.get_servers(), server_name) do
-      send(StreamServerIntuitivo.ServerManager, {:tcp_closed, server_name})
-    else
-      Logger.error("Server #{server_name} not found when trying to send tcp_closed message.")
-    end
     {:noreply, state}
   end
 
